@@ -1,0 +1,40 @@
+{
+  "_description": "Static EC2 on-demand price snapshot used in tests (USD/hour, us-east-1)",
+  "_source": "Subset of services/cost/data/pricing_static.json — for offline unit tests only",
+  "ec2": {
+    "t2.micro":   {"linux": 0.0116,  "windows": 0.0162},
+    "t2.small":   {"linux": 0.023,   "windows": 0.0322},
+    "t2.medium":  {"linux": 0.0464,  "windows": 0.0636},
+    "t3.micro":   {"linux": 0.0104,  "windows": 0.0144},
+    "t3.small":   {"linux": 0.0208,  "windows": 0.0284},
+    "t3.medium":  {"linux": 0.0416,  "windows": 0.0568},
+    "m5.large":   {"linux": 0.096,   "windows": 0.188},
+    "m5.xlarge":  {"linux": 0.192,   "windows": 0.376},
+    "c5.large":   {"linux": 0.085,   "windows": 0.177},
+    "r5.large":   {"linux": 0.126,   "windows": 0.218}
+  },
+  "rds": {
+    "db.t3.micro":  {"single": 0.017, "multi_az": 0.034},
+    "db.t3.medium": {"single": 0.068, "multi_az": 0.136},
+    "db.m5.large":  {"single": 0.171, "multi_az": 0.342}
+  },
+  "nat_gateway": {
+    "hourly_usd": 0.045,
+    "per_gb_usd": 0.045
+  },
+  "s3": {
+    "standard_per_gb_month": 0.023
+  },
+  "lambda": {
+    "per_1m_requests_usd": 0.20,
+    "per_gb_second_usd": 0.0000166667
+  },
+  "ebs": {
+    "gp2_per_gb_month": 0.10,
+    "gp3_per_gb_month": 0.08,
+    "io1_per_gb_month": 0.125
+  },
+  "eip": {
+    "idle_per_hour": 0.005
+  }
+}

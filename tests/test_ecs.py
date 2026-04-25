@@ -29,8 +29,9 @@ def test_delete_cluster():
     client = boto3.client("ecs", region_name="us-east-1")
     client.create_cluster(clusterName="delete-me")
     delete_cluster(client, "delete-me")
-    arns = list_clusters(client)
-    assert not any("delete-me" in arn for arn in arns)
+    # moto keeps INACTIVE clusters in list_clusters; verify status instead
+    desc = client.describe_clusters(clusters=["delete-me"])["clusters"]
+    assert not desc or desc[0]["status"] == "INACTIVE"
 
 
 @mock_aws

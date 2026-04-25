@@ -706,3 +706,129 @@ class TestCostAnalyserCli:
         parser = _build_parser()
         with pytest.raises(SystemExit):
             parser.parse_args([])
+
+
+# ---------------------------------------------------------------------------
+# Container cost estimators
+# ---------------------------------------------------------------------------
+
+class TestEstimateEcsFargateMonthly:
+    def test_basic_calculation(self):
+        from services.cost.pricing_estimator import estimate_ecs_fargate_monthly
+        result = estimate_ecs_fargate_monthly(vcpu=1, memory_gb=2, hours=730)
+        expected_vcpu = 0.04048 * 1 * 730
+        expected_mem = 0.004445 * 2 * 730
+        assert result["vcpu_cost_usd"] == pytest.approx(expected_vcpu)
+        assert result["memory_cost_usd"] == pytest.approx(expected_mem)
+        assert result["monthly_cost_usd"] == pytest.approx(expected_vcpu + expected_mem)
+
+    def test_custom_hours(self):
+        from services.cost.pricing_estimator import estimate_ecs_fargate_monthly
+        result = estimate_ecs_fargate_monthly(vcpu=0.25, memory_gb=0.5, hours=100)
+        assert result["hours"] == 100
+        assert result["monthly_cost_usd"] > 0
+
+    def test_zero_resources(self):
+        from services.cost.pricing_estimator import estimate_ecs_fargate_monthly
+        result = estimate_ecs_fargate_monthly(vcpu=0, memory_gb=0)
+        assert result["monthly_cost_usd"] == pytest.approx(0.0)
+
+    def test_dry_run_returns_result(self):
+        from services.cost.pricing_estimator import estimate_ecs_fargate_monthly
+        result = estimate_ecs_fargate_monthly(vcpu=2, memory_gb=4, dry_run=True)
+        assert result is not None
+        assert result["monthly_cost_usd"] > 0
+
+
+class TestEstimateEcrMonthly:
+    def test_basic_storage_cost(self):
+        from services.cost.pricing_estimator import estimate_ecr_monthly
+        result = estimate_ecr_monthly(storage_gb=100)
+        assert result["monthly_cost_usd"] == pytest.approx(100 * 0.10)
+        assert result["storage_gb"] == 100
+        assert result["rate_per_gb_month"] == pytest.approx(0.10)
+
+    def test_zero_storage(self):
+        from services.cost.pricing_estimator import estimate_ecr_monthly
+        result = estimate_ecr_monthly(storage_gb=0)
+        assert result["monthly_cost_usd"] == pytest.approx(0.0)
+
+    def test_dry_run_returns_result(self):
+        from services.cost.pricing_estimator import estimate_ecr_monthly
+        result = estimate_ecr_monthly(storage_gb=50, dry_run=True)
+        assert result is not None
+        assert result["monthly_cost_usd"] == pytest.approx(5.0)
+
+
+class TestEstimateEksMonthly:
+    def test_cluster_only_cost(self):
+        from services.cost.pricing_estimator import estimate_eks_monthly
+        result = estimate_eks_monthly(hours=730)
+        assert result["cluster_cost_usd"] == pytest.approx(0.10 * 730)
+        assert result["node_cost_usd"] == pytest.approx(0.0)
+        assert result["monthly_cost_usd"] == pytest.approx(0.10 * 730)
+
+    def test_cluster_with_nodes(self):
+        from services.cost.pricing_estimator import estimate_eks_monthly
+        # t3.medium Linux = $0.0416/hr; 3 nodes × 730 hrs
+        result = estimate_eks_monthly(
+            hours=730,
+            node_instance_type="t3.medium",
+            node_count=3,
+        )
+        expected_cluster = 0.10 * 730
+        expected_nodes = 0.0416 * 3 * 730
+        assert result["cluster_cost_usd"] == pytest.approx(expected_cluster)
+        assert result["node_cost_usd"] == pytest.approx(expected_nodes)
+        assert result["monthly_cost_usd"] == pytest.approx(expected_cluster + expected_nodes)
+
+    def test_unknown_node_instance_type_zero_node_cost(self):
+        from services.cost.pricing_estimator import estimate_eks_monthly
+        result = estimate_eks_monthly(node_instance_type="p99.unknown", node_count=2)
+        assert result["node_cost_usd"] == pytest.approx(0.0)
+
+    def test_dry_run_returns_result(self):
+        from services.cost.pricing_estimator import estimate_eks_monthly
+        result = estimate_eks_monthly(hours=730, dry_run=True)
+        assert result is not None
+
+
+class TestEstimateFromSpecContainers:
+    def test_ecs_fargate_spec(self):
+        from services.cost.pricing_estimator import estimate_from_spec
+        spec = {"resource_type": "ecs_fargate", "vcpu": 1, "memory_gb": 2}
+        result = estimate_from_spec(spec)
+        assert result is not None
+        assert result["monthly_cost_usd"] > 0
+
+    def test_ecr_spec(self):
+        from services.cost.pricing_estimator import estimate_from_spec
+        spec = {"resource_type": "ecr", "storage_gb": 200}
+        result = estimate_from_spec(spec)
+        assert result is not None
+        assert result["monthly_cost_usd"] == pytest.approx(200 * 0.10)
+
+    def test_eks_spec_cluster_only(self):
+        from services.cost.pricing_estimator import estimate_from_spec
+        spec = {"resource_type": "eks"}
+        result = estimate_from_spec(spec)
+        assert result is not None
+        assert result["cluster_cost_usd"] > 0
+
+    def test_eks_spec_with_nodes(self):
+        from services.cost.pricing_estimator import estimate_from_spec
+        spec = {
+            "resource_type": "eks",
+            "node_instance_type": "m5.large",
+            "node_count": 2,
+        }
+        result = estimate_from_spec(spec)
+        assert result is not None
+        assert result["node_cost_usd"] > 0
+
+    def test_ecs_fargate_dry_run(self):
+        from services.cost.pricing_estimator import estimate_from_spec
+        spec = {"resource_type": "ecs_fargate", "vcpu": 0.5, "memory_gb": 1}
+        result = estimate_from_spec(spec, dry_run=True)
+        assert result is not None
+

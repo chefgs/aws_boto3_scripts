@@ -251,6 +251,119 @@ def estimate_lambda_monthly(monthly_requests, avg_duration_ms, memory_mb, dry_ru
     }
 
 
+def estimate_ecs_fargate_monthly(vcpu, memory_gb, hours=_HOURS_PER_MONTH, dry_run=False):
+    """Estimate monthly cost for an ECS Fargate workload.
+
+    Parameters
+    ----------
+    vcpu      : number of vCPUs allocated (e.g. 0.25, 0.5, 1, 2, 4)
+    memory_gb : amount of memory in GB
+    hours     : hours per month (default: 730)
+    dry_run   : log the estimate without performing any API calls
+
+    Returns
+    -------
+    dict with keys: vcpu, memory_gb, hours, vcpu_cost_usd, memory_cost_usd, monthly_cost_usd
+    """
+    prices = load_static_prices()
+    fg = prices.get("ecs_fargate", {})
+    vcpu_cost = fg.get("per_vcpu_hour", 0.04048) * vcpu * hours
+    memory_cost = fg.get("per_gb_hour", 0.004445) * memory_gb * hours
+    monthly = vcpu_cost + memory_cost
+    if dry_run:
+        logger.info(
+            "[DRY-RUN] ECS Fargate estimate: %.2f vCPU + %.2f GB RAM × %d hrs"
+            " = $%.4f/month",
+            vcpu, memory_gb, hours, monthly,
+        )
+    return {
+        "vcpu": vcpu,
+        "memory_gb": memory_gb,
+        "hours": hours,
+        "vcpu_cost_usd": vcpu_cost,
+        "memory_cost_usd": memory_cost,
+        "monthly_cost_usd": monthly,
+    }
+
+
+def estimate_ecr_monthly(storage_gb, dry_run=False):
+    """Estimate monthly cost for ECR image storage.
+
+    Parameters
+    ----------
+    storage_gb : total image storage in GB
+    dry_run    : log the estimate without performing any API calls
+
+    Returns
+    -------
+    dict with keys: storage_gb, rate_per_gb_month, monthly_cost_usd
+    """
+    prices = load_static_prices()
+    rate = prices.get("ecr", {}).get("per_gb_month", 0.10)
+    monthly = rate * storage_gb
+    if dry_run:
+        logger.info(
+            "[DRY-RUN] ECR estimate: %.2f GB × $%.4f/GB/month = $%.4f/month",
+            storage_gb, rate, monthly,
+        )
+    return {
+        "storage_gb": storage_gb,
+        "rate_per_gb_month": rate,
+        "monthly_cost_usd": monthly,
+    }
+
+
+def estimate_eks_monthly(
+    hours=_HOURS_PER_MONTH,
+    node_instance_type=None,
+    node_count=0,
+    dry_run=False,
+):
+    """Estimate monthly cost for an EKS cluster (control plane + optional worker nodes).
+
+    Parameters
+    ----------
+    hours               : hours per month for the cluster control plane (default: 730)
+    node_instance_type  : EC2 instance type for worker nodes (optional)
+    node_count          : number of worker nodes (default: 0)
+    dry_run             : log the estimate without performing any API calls
+
+    Returns
+    -------
+    dict with keys: hours, cluster_cost_usd, node_instance_type, node_count,
+                    node_cost_usd, monthly_cost_usd
+    """
+    prices = load_static_prices()
+    cluster_hourly = prices.get("eks", {}).get("cluster_per_hour", 0.10)
+    cluster_cost = cluster_hourly * hours
+
+    node_cost = 0.0
+    if node_instance_type and node_count > 0:
+        node_hourly = prices.get("ec2", {}).get(node_instance_type, {}).get("linux")
+        if node_hourly is None:
+            logger.warning(
+                "No static price found for EKS node instance type '%s' — node cost set to 0",
+                node_instance_type,
+            )
+        else:
+            node_cost = node_hourly * node_count * hours
+
+    monthly = cluster_cost + node_cost
+    if dry_run:
+        logger.info(
+            "[DRY-RUN] EKS estimate: cluster=$%.2f + nodes=$%.2f = $%.2f/month",
+            cluster_cost, node_cost, monthly,
+        )
+    return {
+        "hours": hours,
+        "cluster_cost_usd": cluster_cost,
+        "node_instance_type": node_instance_type,
+        "node_count": node_count,
+        "node_cost_usd": node_cost,
+        "monthly_cost_usd": monthly,
+    }
+
+
 def estimate_from_spec(spec, dry_run=False):
     """Estimate monthly cost from a resource specification dict.
 
@@ -262,6 +375,9 @@ def estimate_from_spec(spec, dry_run=False):
     * ``nat_gateway``  — [hours, gb_processed]
     * ``ebs``          — volume_type, size_gb
     * ``lambda``       — monthly_requests, avg_duration_ms, memory_mb
+    * ``ecs_fargate``  — vcpu, memory_gb, [hours]
+    * ``ecr``          — storage_gb
+    * ``eks``          — [hours, node_instance_type, node_count]
 
     Returns
     -------
@@ -302,6 +418,25 @@ def estimate_from_spec(spec, dry_run=False):
             spec["monthly_requests"],
             spec["avg_duration_ms"],
             spec["memory_mb"],
+            dry_run=dry_run,
+        )
+
+    if resource_type == "ecs_fargate":
+        return estimate_ecs_fargate_monthly(
+            spec["vcpu"],
+            spec["memory_gb"],
+            hours=spec.get("hours", _HOURS_PER_MONTH),
+            dry_run=dry_run,
+        )
+
+    if resource_type == "ecr":
+        return estimate_ecr_monthly(spec["storage_gb"], dry_run=dry_run)
+
+    if resource_type == "eks":
+        return estimate_eks_monthly(
+            hours=spec.get("hours", _HOURS_PER_MONTH),
+            node_instance_type=spec.get("node_instance_type"),
+            node_count=spec.get("node_count", 0),
             dry_run=dry_run,
         )
 

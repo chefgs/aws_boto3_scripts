@@ -1,0 +1,66 @@
+{
+  "_description": "Static on-demand price snapshot (USD/hour unless noted). Used for dry-run and offline estimation.",
+  "_source": "AWS public pricing as of 2024 – us-east-1 region",
+  "ec2": {
+    "t2.micro":    {"linux": 0.0116,  "windows": 0.0162},
+    "t2.small":    {"linux": 0.023,   "windows": 0.0322},
+    "t2.medium":   {"linux": 0.0464,  "windows": 0.0636},
+    "t2.large":    {"linux": 0.0928,  "windows": 0.1272},
+    "t3.micro":    {"linux": 0.0104,  "windows": 0.0144},
+    "t3.small":    {"linux": 0.0208,  "windows": 0.0284},
+    "t3.medium":   {"linux": 0.0416,  "windows": 0.0568},
+    "t3.large":    {"linux": 0.0832,  "windows": 0.1136},
+    "t3.xlarge":   {"linux": 0.1664,  "windows": 0.2272},
+    "m5.large":    {"linux": 0.096,   "windows": 0.188},
+    "m5.xlarge":   {"linux": 0.192,   "windows": 0.376},
+    "m5.2xlarge":  {"linux": 0.384,   "windows": 0.752},
+    "m5.4xlarge":  {"linux": 0.768,   "windows": 1.504},
+    "m6i.large":   {"linux": 0.096,   "windows": 0.192},
+    "m6i.xlarge":  {"linux": 0.192,   "windows": 0.384},
+    "c5.large":    {"linux": 0.085,   "windows": 0.177},
+    "c5.xlarge":   {"linux": 0.17,    "windows": 0.354},
+    "c5.2xlarge":  {"linux": 0.34,    "windows": 0.708},
+    "c6i.large":   {"linux": 0.085,   "windows": 0.177},
+    "r5.large":    {"linux": 0.126,   "windows": 0.218},
+    "r5.xlarge":   {"linux": 0.252,   "windows": 0.436},
+    "r5.2xlarge":  {"linux": 0.504,   "windows": 0.872},
+    "r6i.large":   {"linux": 0.126,   "windows": 0.218},
+    "p3.2xlarge":  {"linux": 3.06,    "windows": 3.306},
+    "g4dn.xlarge": {"linux": 0.526,   "windows": 0.752}
+  },
+  "rds": {
+    "db.t3.micro":   {"single": 0.017,  "multi_az": 0.034},
+    "db.t3.small":   {"single": 0.034,  "multi_az": 0.068},
+    "db.t3.medium":  {"single": 0.068,  "multi_az": 0.136},
+    "db.t3.large":   {"single": 0.136,  "multi_az": 0.272},
+    "db.m5.large":   {"single": 0.171,  "multi_az": 0.342},
+    "db.m5.xlarge":  {"single": 0.342,  "multi_az": 0.684},
+    "db.m5.2xlarge": {"single": 0.684,  "multi_az": 1.368},
+    "db.r5.large":   {"single": 0.24,   "multi_az": 0.48},
+    "db.r5.xlarge":  {"single": 0.48,   "multi_az": 0.96},
+    "db.r5.2xlarge": {"single": 0.96,   "multi_az": 1.92}
+  },
+  "nat_gateway": {
+    "hourly_usd": 0.045,
+    "per_gb_usd": 0.045
+  },
+  "s3": {
+    "standard_per_gb_month": 0.023,
+    "ia_per_gb_month": 0.0125,
+    "glacier_per_gb_month": 0.004
+  },
+  "lambda": {
+    "per_1m_requests_usd": 0.20,
+    "per_gb_second_usd": 0.0000166667
+  },
+  "ebs": {
+    "gp2_per_gb_month": 0.10,
+    "gp3_per_gb_month": 0.08,
+    "io1_per_gb_month": 0.125,
+    "st1_per_gb_month": 0.045,
+    "sc1_per_gb_month": 0.025
+  },
+  "eip": {
+    "idle_per_hour": 0.005
+  }
+}

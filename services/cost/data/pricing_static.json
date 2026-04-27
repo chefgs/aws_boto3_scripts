@@ -62,5 +62,15 @@
   },
   "eip": {
     "idle_per_hour": 0.005
+  },
+  "ecs_fargate": {
+    "per_vcpu_hour": 0.04048,
+    "per_gb_hour": 0.004445
+  },
+  "ecr": {
+    "per_gb_month": 0.10
+  },
+  "eks": {
+    "cluster_per_hour": 0.10
   }
 }
